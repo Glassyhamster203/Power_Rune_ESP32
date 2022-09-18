@@ -14,15 +14,16 @@
 #define EXTRA_LED_NUM 100
 #define LED_REFRESH_TIMEOUT 10
 #define HIT_SENSOR_PORT GPIO_NUM_33
-#define selfId 1        //ESP32 ID
+#define selfId 1 // ESP32 ID
 #define allId 6
 #define AD_Num 3000
 
-typedef struct RGBW_COLOR {
+typedef struct RGBW_COLOR
+{
 	uint32_t red;
 	uint32_t green;
 	uint32_t blue;
-}RGBW_COLOR;
+} RGBW_COLOR;
 
 /*RX2 主灯条*/
 rmt_config_t _rmt_config = {
@@ -40,14 +41,13 @@ rmt_config_t _rmt_config = {
 		_rmt_config.tx_config.carrier_en = false,
 		_rmt_config.tx_config.loop_en = false,
 		_rmt_config.tx_config.idle_output_en = true,
-	}
-};
+	}};
 
 /*TX2 装甲板灯条*/
 rmt_config_t armor_rmt_config = {
 	armor_rmt_config.rmt_mode = RMT_MODE_TX,
 	armor_rmt_config.channel = RMT_CHANNEL_1,
-	armor_rmt_config.gpio_num = GPIO_NUM_17,      //27->17
+	armor_rmt_config.gpio_num = GPIO_NUM_17, // 27->17
 	armor_rmt_config.clk_div = 80,
 	armor_rmt_config.mem_block_num = 1,
 	armor_rmt_config.flags = 0,
@@ -59,8 +59,7 @@ rmt_config_t armor_rmt_config = {
 		armor_rmt_config.tx_config.carrier_en = false,
 		armor_rmt_config.tx_config.loop_en = false,
 		armor_rmt_config.tx_config.idle_output_en = true,
-	}
-};
+	}};
 
 /*D21 侧灯条*/
 rmt_config_t side_rmt_config = {
@@ -78,24 +77,22 @@ rmt_config_t side_rmt_config = {
 		side_rmt_config.tx_config.carrier_en = false,
 		side_rmt_config.tx_config.loop_en = false,
 		side_rmt_config.tx_config.idle_output_en = true,
-	}
-};
+	}};
 
 RGBW_COLOR WS2812[LED_STRIP_ROW][LED_STRIP_COLUMN];
-led_strip_t* main_strip;
-led_strip_t* armor_strip;
-led_strip_t* side_strip;
+led_strip_t *main_strip;
+led_strip_t *armor_strip;
+led_strip_t *side_strip;
 int udpPort = 2333;
 int returnUdpPort = 2334;
 WiFiUDP returnUdp;
-char* ssid = (char*)"robomasterserver";   //添加了(char*)
-char* password = (char*)"12345678";       //
+char *ssid = (char *)"robomasterserver"; //添加了(char*)
+char *password = (char *)"12345678";	 //
 int startFlag = 0;
 int statusFlag = 0;
 int R_default = 0;
 int G_default = 0;
 int B_default = 100;
-
 
 void init_led();
 void ws2812_refresh();
@@ -104,7 +101,7 @@ void ws2812_reset();
 void ws2812_test();
 const void broadcastUdpData(String data);
 
-static void main_task(void* arg)
+static void main_task(void *arg)
 {
 	ws2812_reset();
 	uint delta = 0;
@@ -165,7 +162,6 @@ static void main_task(void* arg)
 					WS2812[row_count][1].red = R_default;
 					WS2812[row_count][6].red = R_default;
 					WS2812[row_count][7].red = R_default;
-
 				}
 				break;
 				case 4:
@@ -213,7 +209,7 @@ static void main_task(void* arg)
 					WS2812[row_count][3].red = R_default;
 					WS2812[row_count][4].red = R_default;
 					WS2812[row_count][5].red = R_default;
-					WS2812[row_count][6].red = R_default;					
+					WS2812[row_count][6].red = R_default;
 				}
 				break;
 				case 6:
@@ -267,7 +263,8 @@ static void main_task(void* arg)
 						}
 					}
 				}
-				if (delta == LED_STRIP_ROW) delta = 0;
+				if (delta == LED_STRIP_ROW)
+					delta = 0;
 				vTaskDelay(5 / portTICK_RATE_MS);
 				if (analogRead(HIT_SENSOR_PORT) >= AD_Num)
 				{
@@ -282,7 +279,7 @@ static void main_task(void* arg)
 				}
 				else
 				{
-					//broadcastUdpData("{\"id\":" + String(selfId) + ",\"status\":\"waiting\"}");
+					// broadcastUdpData("{\"id\":" + String(selfId) + ",\"status\":\"waiting\"}");
 				}
 			}
 		}
@@ -294,20 +291,25 @@ static void main_task(void* arg)
 	}
 }
 
-static void net_task(void* arg)
+static void net_task(void *arg)
 {
 	WiFiUDP myUdp;
 	myUdp.begin(udpPort);
 	Serial.println("net task");
-  char SerialFlag;
+	char SerialFlag;
 	while (1)
 	{
-//		int packageSize = myUdp.parsePacket();
+		//		int packageSize = myUdp.parsePacket();
 		String udpData = "";
-		if( Serial.available() )	//(packageSize)
+		if (Serial.available()) //(packageSize)
 		{
 			Serial.println("data R");
-			udpData = Serial.read();	//myUdp.readString();
+			while (Serial.available() > 0)
+			{
+				udpData += char(Serial.read());
+			}; //My fix for this project
+			//the loop is reading message from serial port
+			// myUdp.readString();   // Udp sever in not available
 			if (udpData != "")
 			{
 				Serial.println(udpData);
@@ -321,11 +323,11 @@ static void net_task(void* arg)
 				else
 				{
 					int targetId = json["id"].as<int>();
-          Serial.println(targetId);   //始终为零
+					Serial.println(targetId); //始终为零
 					if (targetId == selfId || targetId == allId)
 					{
-            Serial.println("Flag1");  //跑不到
-						if (json["command"] == "start"&&!startFlag)
+						Serial.println("Flag1"); //跑不到
+						if (json["command"] == "start" && !startFlag)
 						{
 							startFlag = 1;
 							ws2812_EXset_all(armor_strip, R_default, G_default, B_default);
@@ -354,10 +356,10 @@ static void net_task(void* arg)
 							G_default = json["G"].as<int>();
 							B_default = json["B"].as<int>();
 							broadcastUdpData("{\"id\":" + String(selfId) + ",\"status\":\"color changed\"}");
-							Serial.println(String(R_default)+String(G_default)+String(B_default));
+							Serial.println(String(R_default) + String(G_default) + String(B_default));
 						}
 					}
-					//process Data Here
+					// process Data Here
 				}
 			}
 			vTaskDelay(100 / portTICK_RATE_MS);
@@ -367,42 +369,41 @@ static void net_task(void* arg)
 	}
 }
 
-
-
-void setup() {
+void setup()
+{
 	delay(10);
 	Serial.begin(115200);
 
 	WiFi.mode(WIFI_STA);
 	WiFi.begin(ssid, password);
 	Serial.println("booting");
-	//while (WiFi.status() != WL_CONNECTED) {
+	// while (WiFi.status() != WL_CONNECTED) {
 	//	Serial.print(".");
 	//	delay(500);
-	//}
+	// }
 	returnUdp.begin(returnUdpPort);
 	pinMode(HIT_SENSOR_PORT, INPUT);
-	//init_led();
+	// init_led();
 	init_led();
 	ws2812_test();
 	delay(100);
-	//ws2812_test();
+	// ws2812_test();
 	Serial.println("booted");
 	broadcastUdpData("booted");
 	xTaskCreatePinnedToCore(net_task, "net_task", 4096, NULL, 4, NULL, 0);
-	//startFlag=1;
+	// startFlag=1;
 	xTaskCreatePinnedToCore(main_task, "main_task", 2048, NULL, 8, NULL, 1);
-	//xTaskCreate(cedeng_task, "cedeng_task", 2048, NULL, 12, NULL);
-	//xTaskCreate(main_task, "main_task", 2048, NULL, 8, NULL);
-
+	// xTaskCreate(cedeng_task, "cedeng_task", 2048, NULL, 12, NULL);
+	// xTaskCreate(main_task, "main_task", 2048, NULL, 8, NULL);
 }
 
 // the loop function runs over and over again until power down or reset
-void loop() {
-	//vTaskDelay(100/portTICK_RATE_MS);
+void loop()
+{
+	// vTaskDelay(100/portTICK_RATE_MS);
 }
 
-//checked
+// checked
 void init_led()
 {
 	// set counter clock to 40MHz
@@ -425,7 +426,7 @@ void init_led()
 	main_strip = led_strip_new_rmt_ws2812(&strip_config);
 	armor_strip = led_strip_new_rmt_ws2812(&armor_strip_config);
 	side_strip = led_strip_new_rmt_ws2812(&side_strip_config);
-	if (!main_strip||!armor_strip||!side_strip)
+	if (!main_strip || !armor_strip || !side_strip)
 	{
 		ESP_LOGE(TAG, "install WS2812 driver failed");
 	}
@@ -435,7 +436,7 @@ void init_led()
 	ESP_ERROR_CHECK(side_strip->clear(side_strip, 100));
 }
 
-//checked
+// checked
 void ws2812_set_all(uint16_t Red, uint16_t Green, uint16_t Blue)
 {
 	for (int i = 0; i < LED_STRIP_ROW; i++)
@@ -449,7 +450,7 @@ void ws2812_set_all(uint16_t Red, uint16_t Green, uint16_t Blue)
 	}
 	ws2812_refresh();
 }
-//checked
+// checked
 void ws2812_refresh()
 {
 	for (int i = 0; i < LED_STRIP_ROW; i++)
@@ -462,15 +463,14 @@ void ws2812_refresh()
 	main_strip->refresh(main_strip, LED_REFRESH_TIMEOUT);
 }
 
-//only for side &armor
-void ws2812_EXset_all(led_strip_t* strip,uint16_t R,uint16_t G,uint16_t B)
+// only for side &armor
+void ws2812_EXset_all(led_strip_t *strip, uint16_t R, uint16_t G, uint16_t B)
 {
-	strip->set_pixel(strip,EXTRA_LED_NUM,R,G,B);
+	strip->set_pixel(strip, EXTRA_LED_NUM, R, G, B);
 	strip->refresh(strip, LED_REFRESH_TIMEOUT);
 }
 
-
-//checked
+// checked
 void ws2812_reset()
 {
 	for (int i = 0; i < LED_STRIP_ROW; i++)
@@ -485,7 +485,7 @@ void ws2812_reset()
 	ws2812_refresh();
 }
 
-//checked
+// checked
 void ws2812_test()
 {
 	for (int i = 0; i < LED_STRIP_ROW; i++)
@@ -502,10 +502,10 @@ void ws2812_test()
 	ws2812_reset();
 }
 
-//checked
+// checked
 const void broadcastUdpData(String data)
 {
-	//while(!returnUdp.availableForWrite()){vTaskDelay(100 / portTICK_RATE_MS);}
+	// while(!returnUdp.availableForWrite()){vTaskDelay(100 / portTICK_RATE_MS);}
 	Serial.println("UDP SEND:" + data);
 	returnUdp.beginPacket("255.255.255.255", returnUdpPort);
 	returnUdp.print(data);
