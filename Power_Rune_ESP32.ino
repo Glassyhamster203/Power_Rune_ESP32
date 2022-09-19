@@ -307,9 +307,9 @@ static void net_task(void *arg)
 			while (Serial.available() > 0)
 			{
 				udpData += char(Serial.read());
-			}; //My fix for this project
-			//the loop is reading message from serial port
-			// myUdp.readString();   // Udp sever in not available
+			}; // My fix for this project
+			// the loop is reading message from serial port
+			//  myUdp.readString();   // Udp sever in not available
 			if (udpData != "")
 			{
 				Serial.println(udpData);
@@ -368,9 +368,21 @@ static void net_task(void *arg)
 		vTaskDelay(100 / portTICK_RATE_MS);
 	}
 }
-
+static void cedeng_task(void *arg)
+{
+	Serial.println("task cedeng created successfully");
+	while (1)
+	{
+		/* code */
+		// ws2812_EXset_all(side_strip, 0, 255, 0);
+	}
+}
 void setup()
 {
+	static TaskHandle_t *net_task_handle;
+	static TaskHandle_t *main_task_handle;
+	static TaskHandle_t *cedeng_task_handle;
+
 	delay(10);
 	Serial.begin(115200);
 
@@ -381,6 +393,7 @@ void setup()
 	//	Serial.print(".");
 	//	delay(500);
 	// }
+	vTaskStartScheduler();
 	returnUdp.begin(returnUdpPort);
 	pinMode(HIT_SENSOR_PORT, INPUT);
 	// init_led();
@@ -392,9 +405,10 @@ void setup()
 	broadcastUdpData("booted");
 	xTaskCreatePinnedToCore(net_task, "net_task", 4096, NULL, 4, NULL, 0);
 	// startFlag=1;
-	xTaskCreatePinnedToCore(main_task, "main_task", 2048, NULL, 8, NULL, 1);
-	// xTaskCreate(cedeng_task, "cedeng_task", 2048, NULL, 12, NULL);
-	// xTaskCreate(main_task, "main_task", 2048, NULL, 8, NULL);
+	// xTaskCreatePinnedToCore(main_task, "main_task", 2048, NULL, 8, NULL,1);
+	// xTaskCreatePinnedToCore(cedeng_task, "cedeng_task", 2048, NULL, 12, NULL, 1);
+	xTaskCreate(cedeng_task, "cedeng_task", 2048, NULL, 4, NULL);
+	xTaskCreate(main_task, "main_task", 2048, NULL, 8, NULL);
 }
 
 // the loop function runs over and over again until power down or reset
